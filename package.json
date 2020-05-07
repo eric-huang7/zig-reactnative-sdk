@@ -1,0 +1,33 @@
+{
+  "author": {
+    "name": "Ziggeo"
+  },
+  "bugs": {
+    "url": "https://github.com/Ziggeo/ReactNativeSDK/issues"
+  },
+  "description": "We will presume that you are already familiar and have set up everything needed for the React Native setup on your system.  If not, we can suggest checking up the following [pages](https://facebook.github.io/react-native/docs/getting-started.html):",
+  "devDependencies": {
+    "react": "16.9.0",
+    "react-native": "0.61.5"
+  },
+  "homepage": "https://github.com/Ziggeo/ReactNativeSDK#readme",
+  "keywords": [
+    "react-native"
+  ],
+  "license": "",
+  "main": "index.js",
+  "name": "react-native-ziggeo-library",
+  "peerDependencies": {
+    "react": "16.9.0",
+    "react-native": "0.61.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ziggeo/ReactNativeSDK.git"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "title": "React Native Ziggeo SDK",
+  "version": "1.4.8"
+}
