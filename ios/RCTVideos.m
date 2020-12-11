@@ -57,13 +57,6 @@
 
 RCT_EXPORT_MODULE();
 
-
-- (NSDictionary *)constantsToExport
-{
-    return @{
-    };
-}
-
 - (NSArray<NSString *> *)supportedEvents
 {
     return @[
