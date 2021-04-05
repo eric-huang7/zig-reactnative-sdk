@@ -27,4 +27,9 @@ RCT_EXPORT_METHOD(stopRecording) {
     ];
 }
 
++ (void)setLastZiggeoRecorder:(ZiggeoRecorder2 *) recorder {
+    lastZiggeoRecorder = recorder;
+}
+
+
 @end
