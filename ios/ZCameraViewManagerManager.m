@@ -25,6 +25,8 @@ RCT_EXPORT_VIEW_PROPERTY(ref, NSString);
     // todo? [m_ziggeo.config setRecorderCacheConfig:self.cacheConfig];
 
     ZiggeoRecorder2* recorder = [[ZiggeoRecorder2 alloc] initWithZiggeoApplication:m_ziggeo];
+    recorder.controlsVisible = false;
+
     /*
     recorder.coverSelectorEnabled = self->_coverSelectorEnabled;
     recorder.cameraFlipButtonVisible = self->_cameraFlipButtonVisible;
