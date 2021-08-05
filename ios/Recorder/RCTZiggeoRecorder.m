@@ -393,6 +393,7 @@ RCT_REMAP_METHOD(record,
     //_currentContext = context;
 }
 
+
 RCT_EXPORT_METHOD(uploadFromFileSelectorWithDurationLimit:(int)maxAllowedDurationInSeconds
                   enforceDuration:(int)enforceDuration
                   resolver:(RCTPromiseResolveBlock)resolve
