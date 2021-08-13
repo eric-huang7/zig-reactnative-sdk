@@ -151,6 +151,7 @@ ZiggeoRecorderInterfaceConfig *parseRecorderInterfaceConfig(NSDictionary *config
     if(_recorder != nil) [_recorder sendEventWithName:@"UploadProgress" body:@{@"bytesSent": @(bytesSent), @"totalBytes":@(totalBytes), @"fileName":sourcePath, @"token":token }];
 }
 
+//MARK: - ZiggeoRecorderDelegate
 -(void) ziggeoRecorderDidCancel
 {
     [self reject:@"ERR_CANCELLED" message:@"cancelled by the user"];
@@ -179,6 +180,46 @@ ZiggeoRecorderInterfaceConfig *parseRecorderInterfaceConfig(NSDictionary *config
         [_recorder sendEventWithName:@"Processing" body:@{}];
     }
 }
+
+//MARK: - ZiggeoAudioRecorderDelegate
+- (void)ziggeoAudioRecorderReady {
+    if (_recorder != nil) {
+        [_recorder sendEventWithName:@"ReadyToAudioRecord" body:@{}];
+    }
+}
+
+- (void)ziggeoAudioRecorderCanceled {
+    if (_recorder != nil) {
+        [_recorder sendEventWithName:@"AudioRecordCanceled" body:@{}];
+    }
+}
+
+- (void)ziggeoAudioRecorderRecoding {
+    if (_recorder != nil) {
+        [_recorder sendEventWithName:@"AudioRecordingStarted" body:@{}];
+    }
+}
+
+- (void)ziggeoAudioRecorderCurrentRecordedDurationSeconds:(double)seconds {
+    if (_recorder != nil) {
+        [_recorder sendEventWithName:@"AudioRecordingProgress" body:@{@"recording_seconds": [NSString stringWithFormat:@"%.02f", seconds]}];
+    }
+}
+
+- (void)ziggeoAudioRecorderFinished:(double)seconds {
+    if (_recorder != nil) {
+        [_recorder sendEventWithName:@"AudioRecordingStopped" body:@{@"duration": [NSString stringWithFormat:@"%.02f", seconds]}];
+    }
+}
+
+- (void)ziggeoAudioRecorderPlaying {
+
+}
+
+- (void)ziggeoAudioRecorderPaused {
+
+}
+
 
 -(void)setRecorder:(RCTZiggeoRecorder *)recorder {
     if(recorder != nil)
@@ -222,6 +263,12 @@ RCT_EXPORT_MODULE();
         @"Verified",
         @"Processed",
         @"Processing",
+
+        @"AudioRecordCanceled",
+        @"ReadyToAudioRecord",
+        @"AudioRecordingStarted",
+        @"AudioRecordingProgress",
+        @"AudioRecordingStopped",
     ];
 }
 
@@ -409,6 +456,7 @@ RCT_REMAP_METHOD(recordAudio,
         [m_ziggeo.config setRecorderCacheConfig:self.cacheConfig];
 
         ZiggeoAudioRecorder *audioRecorder = [[ZiggeoAudioRecorder alloc] initWithZiggeoApplication:m_ziggeo];
+        audioRecorder.recorderDelegate = context;
 
         UIViewController* parentController = [UIApplication sharedApplication].keyWindow.rootViewController;
         while(parentController.presentedViewController && parentController != parentController.presentedViewController) {
