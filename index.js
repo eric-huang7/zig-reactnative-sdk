@@ -1,15 +1,20 @@
-import {NativeModules, NativeEventEmitter, requireNativeComponent} from 'react-native';
+import {NativeEventEmitter, NativeModules} from 'react-native';
 import VideosApi from './videos';
+import AudiosApi from './audios';
+import ImagesApi from './images';
 
 const {ZiggeoPlayer} = NativeModules;
 const {ZiggeoRecorder} = NativeModules;
 import ZiggeoVideoView from './video_view.js';
 import ZiggeoCameraView from './camera_view.js';
 const {Videos} = NativeModules;
+const {Audios} = NativeModules;
 const {ContactUs} = NativeModules;
 
 export default {
     VideosApi,
+    AudiosApi,
+    ImagesApi,
     // Common
     setAppToken: function (appToken: string) {
         ZiggeoPlayer.setAppToken(appToken);
@@ -100,6 +105,18 @@ export default {
     },
     record: async function () {
         return ZiggeoRecorder.record();
+    },
+    startImageRecorder: async function () {
+        return  ImagesApi.startImageRecorder();
+    },
+    startAudioRecorder: async function () {
+        return ImagesApi.startAudioRecorder();
+    },
+    startAudioPlayer:async function (token: string) {
+        return ImagesApi.startAudioPlayer(token);
+    },
+    showImage:async function (token: string) {
+        return ImagesApi.showImage(token);
     },
     startScreenRecorder: async function () {
         return ZiggeoRecorder.startScreenRecorder();
