@@ -117,10 +117,9 @@ export default {
     record: async function () {
         return ZiggeoRecorder.record();
     },
-<<<<<<< HEAD
     chooseVideo: async function (map) {
         return ZiggeoRecorder.chooseVideo(map);
-=======
+    },
     startCameraRecorder: async function () {
         return ZiggeoRecorder.record();
     },
@@ -135,7 +134,9 @@ export default {
     },
     showImage:async function (token: string) {
         return ZiggeoRecorder.showImage(token);
->>>>>>> 9201a78bbc0c86f47535d8ce9f792b728173d81b
+    },
+    chooseVideo: async function (map) {
+        return ZiggeoRecorder.chooseVideo(map);
     },
     startScreenRecorder: async function () {
         return ZiggeoRecorder.startScreenRecorder();
