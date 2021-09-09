@@ -10,14 +10,8 @@
 #import <React/RCTLog.h>
 #import "RotatingImagePickerController.h"
 #import "ButtonConfig+parse.h"
+#import "ZiggeoRecorderContext.h"
 
-@interface UploadingContext: NSObject<UIImagePickerControllerDelegate, UINavigationControllerDelegate, ZiggeoRecorderDelegate, ZiggeoVideosDelegate>
-@property (strong, nonatomic) RCTPromiseResolveBlock resolveBlock;
-@property (strong, nonatomic) RCTPromiseRejectBlock rejectBlock;
-@property (strong, nonatomic) RCTZiggeoRecorder* recorder;
-@property (nonatomic) int maxAllowedDurationInSeconds;
-@property (nonatomic) bool enforceDuration;
-@end;
 
 ButtonConfig *parseButtonConfig(NSDictionary *dictionary) {
     ButtonConfig *config = [ButtonConfig new];
@@ -76,124 +70,6 @@ ZiggeoRecorderInterfaceConfig *parseRecorderInterfaceConfig(NSDictionary *config
     return conf;
 }
 
-@implementation UploadingContext
--(void)resolve:(NSString*)token {
-    if(_resolveBlock) _resolveBlock(token);
-    _resolveBlock = nil;
-    _rejectBlock = nil;
-    self.recorder = nil;
-}
-
--(void)reject:(NSString*)code message:(NSString*)message {
-    if(_rejectBlock) _rejectBlock(code, message, [NSError errorWithDomain:@"recorder" code:0 userInfo:@{code:message}]);
-    _resolveBlock = nil;
-    _rejectBlock = nil;
-    self.recorder = nil;
-}
-
-- (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary<NSString *,id> *)info {
-    [picker dismissViewControllerAnimated:true completion:nil];
-    NSURL* url = info[@"UIImagePickerControllerMediaURL"];
-    
-    NSMutableDictionary* recordingParams = [[NSMutableDictionary alloc] init];
-    if(self.recorder.additionalRecordingParams != nil) [recordingParams addEntriesFromDictionary:self.recorder.additionalRecordingParams];
-    if(self.maxAllowedDurationInSeconds > 0)
-    {
-        if(self.enforceDuration)
-        {
-            AVAsset* audioAsset = [AVURLAsset assetWithURL:url];
-            CMTime assetTime = [audioAsset duration];
-            Float64 duration = CMTimeGetSeconds(assetTime);
-            if(duration > self.maxAllowedDurationInSeconds) {
-                [self reject:@"ERR_DURATION_EXCEEDED" message:@"video duration is more than allowed"];
-                return;
-            }
-        }
-        else
-        {
-            NSDictionary* durationRecordingParams = @{ @"max_duration" : @(self.maxAllowedDurationInSeconds), @"enforce_duration": @"false"};
-            [recordingParams addEntriesFromDictionary:durationRecordingParams];
-        }
-    }
-    
-    Ziggeo* m_ziggeo = [[Ziggeo alloc] initWithToken:_recorder.appToken];
-    m_ziggeo.connect.serverAuthToken = _recorder.serverAuthToken;
-    m_ziggeo.connect.clientAuthToken = _recorder.clientAuthToken;
-    [m_ziggeo.config setRecorderCacheConfig:self.recorder.cacheConfig];
-    m_ziggeo.videos.delegate = self;
-    [m_ziggeo.videos createVideoWithData:recordingParams file:url.path cover:nil callback:nil Progress:nil];
-}
-
-- (void)imagePickerControllerDidCancel:(UIImagePickerController *)picker {
-    NSLog(@"image picker cancelled delegate");
-    [picker dismissViewControllerAnimated:true completion:nil];
-    [self reject:@"ERR_CANCELLED" message:@"cancelled by the user"];
-}
-
--(void) videoUploadCompleteForPath:(NSString*)sourcePath token:(NSString*)token withResponse:(NSURLResponse*)response error:(NSError*)error json:(NSDictionary*)json
-{
-    if(error == nil)
-    {
-        [self resolve:token];
-    }
-    else
-    {
-        [self reject:@"ERR_UNKNOWN" message:@"unknown recorder error"];
-    }
-}
-
--(void) videoPreparingToUploadWithPath:(NSString*)sourcePath {}
--(void) videoPreparingToUploadWithPath:(NSString*)sourcePath token:(NSString*)token {}
-
--(void) videoUploadStartedWithPath:(NSString*)sourcePath token:(NSString*)token backgroundTask:(NSURLSessionTask*)uploadingTask {}
--(void) videoUploadProgressForPath:(NSString*)sourcePath token:(NSString*)token totalBytesSent:(int)bytesSent totalBytesExpectedToSend:(int)totalBytes
-{
-    if(_recorder != nil) [_recorder sendEventWithName:@"UploadProgress" body:@{@"bytesSent": @(bytesSent), @"totalBytes":@(totalBytes), @"fileName":sourcePath, @"token":token }];
-}
-
--(void) ziggeoRecorderDidCancel
-{
-    [self reject:@"ERR_CANCELLED" message:@"cancelled by the user"];
-}
-
--(void) ziggeoRecorderDidStop {
-    if (_recorder != nil) {
-        [_recorder sendEventWithName:@"RecordingStopped" body:@{}];
-    }
-}
-
--(void) ziggeoRecorderDidVerify {
-    if (_recorder != nil) {
-        [_recorder sendEventWithName:@"Verified" body:@{}];
-    }
-}
-
--(void) ziggeoRecorderDidProcess {
-    if (_recorder != nil) {
-        [_recorder sendEventWithName:@"Processed" body:@{}];
-    }
-}
-
--(void) ziggeoRecorderProcessing {
-    if (_recorder != nil) {
-        [_recorder sendEventWithName:@"Processing" body:@{}];
-    }
-}
-
--(void)setRecorder:(RCTZiggeoRecorder *)recorder {
-    if(recorder != nil)
-    {
-        if(recorder.contexts == nil) recorder.contexts = [[NSMutableArray alloc] init];
-        [recorder.contexts addObject:self];
-    }
-    else if(_recorder != nil)
-    {
-        [_recorder.contexts removeObject:self];
-    }
-    _recorder = recorder;
-}
-
-@end
 
 @implementation RCTZiggeoRecorder {
     NSInteger _startDelay;
@@ -222,6 +98,12 @@ RCT_EXPORT_MODULE();
         @"Verified",
         @"Processed",
         @"Processing",
+
+        @"AudioRecordCanceled",
+        @"ReadyToAudioRecord",
+        @"AudioRecordingStarted",
+        @"AudioRecordingProgress",
+        @"AudioRecordingStopped",
     ];
 }
 
@@ -341,7 +223,7 @@ RCT_REMAP_METHOD(record,
                  recordWithResolver:(RCTPromiseResolveBlock)resolve
                  rejecter:(RCTPromiseRejectBlock)reject)
 {
-    UploadingContext* context = [[UploadingContext alloc] init];
+    ZiggeoRecorderContext* context = [[ZiggeoRecorderContext alloc] init];
     context.resolveBlock = resolve;
     context.rejectBlock = reject;
     context.recorder = self;
@@ -357,20 +239,20 @@ RCT_REMAP_METHOD(record,
         recorder.cameraFlipButtonVisible = self->_cameraFlipButtonVisible;
         recorder.cameraDevice = self->_camera;
         recorder.recorderDelegate = context;
+        recorder.uploadDelegate = context;
         recorder.extraArgsForCreateVideo = self->_additionalRecordingParams;
         recorder.useLiveStreaming = self->_liveStreamingEnabled;
         recorder.recordingQuality = self->_quality;
         recorder.interfaceConfig = parseRecorderInterfaceConfig(self.interfaceConfig);
         recorder.autostartRecordingAfterSeconds = self.autostartRecordingAfter;
         recorder.startDelay = self.startDelay;
-        if(self->_videoWidth != 0) recorder.videoWidth = (int)self.videoWidth;
-        if(self->_videoHeight != 0) recorder.videoHeight = (int)self.videoHeight;
-        if(self->_videoBitrate != 0) recorder.videoBitrate = (int)self.videoBitrate;
-        if(self->_audioSampleRate != 0) recorder.audioSampleRate = (int)self.audioSampleRate;
-        if(self->_audioBitrate != 0) recorder.audioBitrate = (int)self.audioBitrate;
-        if(self->_additionalThemeParams)
-        {
-            if(recorder.extraArgsForCreateVideo) {
+        if (self->_videoWidth != 0) recorder.videoWidth = (int)self.videoWidth;
+        if (self->_videoHeight != 0) recorder.videoHeight = (int)self.videoHeight;
+        if (self->_videoBitrate != 0) recorder.videoBitrate = (int)self.videoBitrate;
+        if (self->_audioSampleRate != 0) recorder.audioSampleRate = (int)self.audioSampleRate;
+        if (self->_audioBitrate != 0) recorder.audioBitrate = (int)self.audioBitrate;
+        if (self->_additionalThemeParams) {
+            if (recorder.extraArgsForCreateVideo) {
                 NSMutableDictionary* merged = [[NSMutableDictionary alloc] initWithDictionary:recorder.extraArgsForCreateVideo];
                 [merged addEntriesFromDictionary:self->_additionalThemeParams];
                 recorder.extraArgsForCreateVideo = merged;
@@ -378,13 +260,12 @@ RCT_REMAP_METHOD(record,
             else recorder.extraArgsForCreateVideo = self->_additionalThemeParams;
         }
         recorder.maxRecordedDurationSeconds = self->_maxRecordingDuration;
-        if(recorder.extraArgsForCreateVideo && ([@"true" isEqualToString:recorder.extraArgsForCreateVideo[@"hideRecorderControls"]] || [[recorder.extraArgsForCreateVideo valueForKey:@"hideRecorderControls"] boolValue] ))
-        {
+        if (recorder.extraArgsForCreateVideo && ([@"true" isEqualToString:recorder.extraArgsForCreateVideo[@"hideRecorderControls"]] || [[recorder.extraArgsForCreateVideo valueForKey:@"hideRecorderControls"] boolValue] )) {
             recorder.controlsVisible = false;
         }
-        m_ziggeo.videos.delegate = context;
+        
         // [[UIApplication sharedApplication].keyWindow.rootViewController presentViewController:recorder animated:true completion:nil];
-        UIViewController* parentController = [UIApplication sharedApplication].keyWindow.rootViewController;
+        UIViewController *parentController = [UIApplication sharedApplication].keyWindow.rootViewController;
         while(parentController.presentedViewController && parentController != parentController.presentedViewController) {
             parentController = parentController.presentedViewController;
         }
@@ -393,7 +274,6 @@ RCT_REMAP_METHOD(record,
     //_currentContext = context;
 }
 
-
 RCT_EXPORT_METHOD(uploadFromFileSelectorWithDurationLimit:(int)maxAllowedDurationInSeconds
                   enforceDuration:(int)enforceDuration
                   resolver:(RCTPromiseResolveBlock)resolve
@@ -401,19 +281,19 @@ RCT_EXPORT_METHOD(uploadFromFileSelectorWithDurationLimit:(int)maxAllowedDuratio
 {
     
     dispatch_async(dispatch_get_main_queue(), ^{
-        UploadingContext* context = [[UploadingContext alloc] init];
+        ZiggeoRecorderContext *context = [[ZiggeoRecorderContext alloc] init];
         context.resolveBlock = resolve;
         context.rejectBlock = reject;
         context.recorder = self;
         context.maxAllowedDurationInSeconds = maxAllowedDurationInSeconds;
         context.enforceDuration = (enforceDuration != 0);
 
-        UIImagePickerController* imagePicker = [[RotatingImagePickerController alloc] init];
+        UIImagePickerController *imagePicker = [[RotatingImagePickerController alloc] init];
         imagePicker.sourceType = UIImagePickerControllerSourceTypePhotoLibrary;
         imagePicker.delegate = context;
         imagePicker.mediaTypes = [[NSArray alloc] initWithObjects:@"public.movie", nil];
         
-        UIViewController* parentController = [UIApplication sharedApplication].keyWindow.rootViewController;
+        UIViewController *parentController = [UIApplication sharedApplication].keyWindow.rootViewController;
         while(parentController.presentedViewController && parentController != parentController.presentedViewController) {
             parentController = parentController.presentedViewController;
         }
@@ -422,32 +302,31 @@ RCT_EXPORT_METHOD(uploadFromFileSelectorWithDurationLimit:(int)maxAllowedDuratio
 }
 
 
-RCT_REMAP_METHOD(uploadFromFileSelector,
+RCT_REMAP_METHOD(chooseVideo,
                  resolver:(RCTPromiseResolveBlock)resolve
                  rejecter:(RCTPromiseRejectBlock)reject)
 {
-    [self uploadFromFileSelector:nil resolver:resolve rejecter:reject];
+    [self chooseVideo:nil resolver:resolve rejecter:reject];
 }
 
--(void)applyAdditionalParams:(NSDictionary*)map context:(UploadingContext*)context {
-    if(map != nil)
-    {
-        if([map objectForKey:@"max_duration"] != nil) {
+- (void)applyAdditionalParams:(NSDictionary*)map context:(ZiggeoRecorderContext*)context {
+    if (map != nil) {
+        if ([map objectForKey:@"max_duration"] != nil) {
             context.maxAllowedDurationInSeconds = [[map objectForKey:@"max_duration"] intValue];
         }
-        if([map objectForKey:@"enforce_duration"] != nil) {
+        if ([map objectForKey:@"enforce_duration"] != nil) {
             context.enforceDuration = [[map objectForKey:@"enforce_duration"] boolValue];
         }
     }
 }
 
-RCT_EXPORT_METHOD(uploadFromFileSelector:(NSDictionary*)map
+RCT_EXPORT_METHOD(chooseVideo:(NSDictionary*)map
                  resolver:(RCTPromiseResolveBlock)resolve
                  rejecter:(RCTPromiseRejectBlock)reject)
 {
     
     dispatch_async(dispatch_get_main_queue(), ^{
-        UploadingContext* context = [[UploadingContext alloc] init];
+        ZiggeoRecorderContext *context = [[ZiggeoRecorderContext alloc] init];
         context.resolveBlock = resolve;
         context.rejectBlock = reject;
         context.recorder = self;
@@ -460,7 +339,7 @@ RCT_EXPORT_METHOD(uploadFromFileSelector:(NSDictionary*)map
         imagePicker.delegate = context;
         imagePicker.mediaTypes = [[NSArray alloc] initWithObjects:@"public.movie", nil];
         
-        UIViewController* parentController = [UIApplication sharedApplication].keyWindow.rootViewController;
+        UIViewController *parentController = [UIApplication sharedApplication].keyWindow.rootViewController;
         while(parentController.presentedViewController && parentController != parentController.presentedViewController) {
             parentController = parentController.presentedViewController;
         }
@@ -481,23 +360,20 @@ RCT_EXPORT_METHOD(uploadFromPath:(NSString*)fileName
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 {
-    UploadingContext* context = [[UploadingContext alloc] init];
+    ZiggeoRecorderContext* context = [[ZiggeoRecorderContext alloc] init];
     context.resolveBlock = resolve;
     context.rejectBlock = reject;
     context.recorder = self;
     [self applyAdditionalParams:map context:context];
     
-    if(fileName != nil)
-    {
+    if (fileName != nil) {
         Ziggeo* m_ziggeo = [[Ziggeo alloc] initWithToken:_appToken];
         m_ziggeo.connect.serverAuthToken = self.serverAuthToken;
         m_ziggeo.connect.clientAuthToken = self.clientAuthToken;
         [m_ziggeo.config setRecorderCacheConfig:self.cacheConfig];
-        m_ziggeo.videos.delegate = context;
-        [m_ziggeo.videos createVideoWithData:_additionalRecordingParams file:fileName cover:nil callback:nil Progress:nil];
-    }
-    else
-    {
+        m_ziggeo.videos.uploadDelegate = context;
+        [m_ziggeo.videos uploadVideoWithPath:fileName];
+    } else {
         reject(@"ERR_NOFILE", @"empty filename", [NSError errorWithDomain:@"recorder" code:0 userInfo:@{@"ERR_NOFILE":@"empty filename"}]);
     }
 }

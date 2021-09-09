@@ -1,30 +1,43 @@
-import {NativeModules, NativeEventEmitter, requireNativeComponent} from 'react-native';
+import {NativeEventEmitter, NativeModules} from 'react-native';
 import VideosApi from './videos';
+import AudiosApi from './audios';
+import ImagesApi from './images';
 
 const {ZiggeoPlayer} = NativeModules;
 const {ZiggeoRecorder} = NativeModules;
+const {ZiggeoAudio} = NativeModules;
+const {ZiggeoImage} = NativeModules;
 import ZiggeoVideoView from './video_view.js';
 import ZiggeoCameraView from './camera_view.js';
 const {Videos} = NativeModules;
+const {Audios} = NativeModules;
 const {ContactUs} = NativeModules;
 
 export default {
     VideosApi,
+    AudiosApi,
+    ImagesApi,
     // Common
     setAppToken: function (appToken: string) {
         ZiggeoPlayer.setAppToken(appToken);
         ZiggeoRecorder.setAppToken(appToken);
         Videos.setAppToken(appToken);
+        ZiggeoImage.setAppToken(appToken);
+        ZiggeoAudio.setAppToken(appToken);
     },
     setClientAuthToken: function (token: string) {
         ZiggeoPlayer.setClientAuthToken(token);
         ZiggeoRecorder.setClientAuthToken(token);
         Videos.setClientAuthToken(token);
+        ZiggeoImage.setClientAuthToken(token);
+        ZiggeoAudio.setClientAuthToken(token);
     },
     setServerAuthToken: function (token: string) {
         ZiggeoPlayer.setServerAuthToken(token);
         ZiggeoRecorder.setServerAuthToken(token);
         Videos.setServerAuthToken(token);
+        ZiggeoImage.setServerAuthToken(token);
+        ZiggeoAudio.setServerAuthToken(token);
     },
     sendReport(logsList) {
         ContactUs.sendReport(logsList);
@@ -98,14 +111,35 @@ export default {
     setCamera: function (camera) {
         ZiggeoRecorder.setCamera(camera);
     },
+    /**
+     * @deprecated Use `startCameraRecorder()` instead.
+     */
     record: async function () {
         return ZiggeoRecorder.record();
     },
+    chooseVideo: async function (map) {
+        return ZiggeoRecorder.chooseVideo(map);
+    },
+    startCameraRecorder: async function () {
+        return ZiggeoRecorder.record();
+    },
+    startImageRecorder: async function () {
+        return ZiggeoRecorder.startImageRecorder();
+    },
+    startAudioRecorder: async function () {
+        return ZiggeoRecorder.startAudioRecorder();
+    },
+    startAudioPlayer:async function (token: string) {
+        return ZiggeoRecorder.startAudioPlayer(token);
+    },
+    showImage:async function (token: string) {
+        return ZiggeoRecorder.showImage(token);
+    },
+    chooseVideo: async function (map) {
+        return ZiggeoRecorder.chooseVideo(map);
+    },
     startScreenRecorder: async function () {
         return ZiggeoRecorder.startScreenRecorder();
-    },
-    uploadFromFileSelector: async function (map) {
-        return ZiggeoRecorder.uploadFromFileSelector(map);
     },
     uploadFromPath: async function (fileName, createObject: CreateObject) {
         return ZiggeoRecorder.uploadFromPath(fileName, createObject);
@@ -134,9 +168,9 @@ export default {
         return new NativeEventEmitter(ZiggeoVideoView);
     },
 
-    // ZiggeoPlayer
-    play: function (videoId: string) {
-        ZiggeoPlayer.play(videoId);
+    // Video Player
+    playVideo: function (videoId: string) {
+        ZiggeoPlayer.playVideo(videoId);
     },
     playFromUri: function (path_or_url: string) {
         ZiggeoPlayer.playFromUri(path_or_url);
@@ -152,6 +186,31 @@ export default {
     },
     setAdsURL: function (url) {
         ZiggeoPlayer.setAdsURL(url);
+    },
+    downloadVideo: async function (videoToken: string) {
+        ZiggeoPlayer.downloadVideo(videoToken);
+    },
+
+    // Audio
+    recordAudio: async function () {
+        return ZiggeoAudio.recordAudio();
+    },
+    playAudio: async function (audioToken: string) {
+        return ZiggeoAudio.playAudio(audioToken);
+    },
+    downloadAudio: async function (audioToken: string) {
+        return ZiggeoAudio.downloadAudio(audioToken);
+    },
+
+    // Image
+    takePhoto: async function (map) {
+        return ZiggeoImage.takePhoto(map);
+    },
+    chooseImage: async function (map) {
+        return ZiggeoImage.chooseImage(map);
+    },
+    downloadImage: async function (imageToken) {
+        return ZiggeoImage.downloadImage(imageToken);
     },
 
     // Constants
