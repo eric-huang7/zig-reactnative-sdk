@@ -5,7 +5,7 @@
 #import "RotatingImagePickerController.h"
 
 
-@interface VideosContext: NSObject<ZiggeoUploadDelegate>
+@interface VideosContext: NSObject<ZiggeoDelegate>
 
 @property (strong, nonatomic) RCTPromiseResolveBlock resolveBlock;
 @property (strong, nonatomic) RCTPromiseRejectBlock rejectBlock;
