@@ -7,6 +7,7 @@ import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableMap
 import com.ziggeo.BaseModule
 import com.ziggeo.androidsdk.log.ZLog
+import com.ziggeo.androidsdk.net.models.images.ImageDetails
 import com.ziggeo.tasks.SimpleTask
 import com.ziggeo.tasks.Task
 import com.ziggeo.utils.ConversionUtil
@@ -16,13 +17,14 @@ import io.reactivex.functions.BiConsumer
 import io.reactivex.plugins.RxJavaPlugins
 import io.reactivex.schedulers.Schedulers
 import java.io.InputStream
+import java.io.File
 
 /**
- * Created by alex on 6/25/2017.
+ * Created by alex on 4/22/2021.
  */
-class VideosModule(reactContext: ReactApplicationContext) : BaseModule(reactContext) {
+class ImagesModule(reactContext: ReactApplicationContext) : BaseModule(reactContext) {
     private val compositeDisposable: CompositeDisposable
-    override fun getName() = "Videos"
+    override fun getName() = "Images"
 
     init {
         RxJavaPlugins.setErrorHandler { t: Throwable? -> ZLog.e(t) }
@@ -51,7 +53,7 @@ class VideosModule(reactContext: ReactApplicationContext) : BaseModule(reactCont
     fun index(args: ReadableMap?, promise: Promise) {
         val task: Task = SimpleTask(promise)
         val d = ziggeo.apiRx()
-                .videosRaw()
+                .imagesRaw()
                 .index(ConversionUtil.toMap(args))
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
@@ -60,11 +62,24 @@ class VideosModule(reactContext: ReactApplicationContext) : BaseModule(reactCont
         compositeDisposable.add(d)
     }
 
+    @ReactMethod
+    fun destroy(tokenOrKey: String, promise: Promise) {
+        val task: Task = SimpleTask(promise)
+        val d = ziggeo.apiRx()
+                .imagesRaw()
+                .destroy(tokenOrKey)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({ resolve(task, null) }
+                ) { throwable: Throwable -> reject(task, throwable.toString()) }
+        compositeDisposable.add(d)
+    }
+
     @SuppressLint("CheckResult")
     @ReactMethod
     fun get(tokenOrKey: String, promise: Promise) {
         ziggeo.apiRx()
-                .videos()
+                .images()
                 .get(tokenOrKey)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
@@ -78,12 +93,38 @@ class VideosModule(reactContext: ReactApplicationContext) : BaseModule(reactCont
                 })
     }
 
+    @ReactMethod
+    fun create(file: File, args: ReadableMap?, promise: Promise) {
+        val task: Task = SimpleTask(promise)
+        val d = ziggeo.apiRx()
+                .imagesRaw()
+                .create(file, ConversionUtil.toMap(args))
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({ upd: String? -> resolve(task, upd) }
+                ) { throwable: Throwable -> reject(task, throwable.toString()) }
+        compositeDisposable.add(d)
+    }
+
+    @ReactMethod
+    fun update(modelJson: String, promise: Promise) {
+        val task: Task = SimpleTask(promise)
+        val d = ziggeo.apiRx()
+                .imagesRaw()
+                .update(ImageDetails.fromJson(modelJson))
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({ upd: String? -> resolve(task, upd) }
+                ) { throwable: Throwable -> reject(task, throwable.toString()) }
+        compositeDisposable.add(d)
+    }
+
     @SuppressLint("CheckResult")
     @ReactMethod
-    fun getVideoUrl(tokenOrKey: String, promise: Promise) {
+    fun source(tokenOrKey: String, promise: Promise) {
         ziggeo.apiRx()
-                .videos()
-                .getVideoUrl(tokenOrKey)
+                .images()
+                .source(tokenOrKey)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(BiConsumer { url, throwable ->
@@ -98,9 +139,9 @@ class VideosModule(reactContext: ReactApplicationContext) : BaseModule(reactCont
 
     @SuppressLint("CheckResult")
     @ReactMethod
-    fun getImageUrl(tokenOrKey: String, promise: Promise) {
+    fun getAudioUrl(tokenOrKey: String, promise: Promise) {
         ziggeo.apiRx()
-                .videos()
+                .images()
                 .getImageUrl(tokenOrKey)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
@@ -112,32 +153,6 @@ class VideosModule(reactContext: ReactApplicationContext) : BaseModule(reactCont
                         promise.reject(it)
                     }
                 })
-    }
-
-    @ReactMethod
-    fun destroy(tokenOrKey: String, promise: Promise) {
-        val task: Task = SimpleTask(promise)
-        val d = ziggeo.apiRx()
-                .videosRaw()
-                .destroy(tokenOrKey)
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe({ resolve(task, null) }
-                ) { throwable: Throwable -> reject(task, throwable.toString()) }
-        compositeDisposable.add(d)
-    }
-
-    @ReactMethod
-    fun update(token: String, modelJson: String, promise: Promise) {
-        val task: Task = SimpleTask(promise)
-        val d = ziggeo.apiRx()
-                .videosRaw()
-                .update(token, modelJson)
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe({ upd: String? -> resolve(task, upd) }
-                ) { throwable: Throwable -> reject(task, throwable.toString()) }
-        compositeDisposable.add(d)
     }
 
     override fun onCatalystInstanceDestroy() {
