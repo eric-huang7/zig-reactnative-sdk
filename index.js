@@ -1,15 +1,21 @@
-import {NativeModules, NativeEventEmitter, requireNativeComponent} from 'react-native';
+import {NativeEventEmitter, NativeModules} from 'react-native';
 import VideosApi from './videos';
+import AudiosApi from './audios';
+import ImagesApi from './images';
 
 const {ZiggeoPlayer} = NativeModules;
 const {ZiggeoRecorder} = NativeModules;
 import ZiggeoVideoView from './video_view.js';
 import ZiggeoCameraView from './camera_view.js';
+
 const {Videos} = NativeModules;
+const {Audios} = NativeModules;
 const {ContactUs} = NativeModules;
 
 export default {
     VideosApi,
+    AudiosApi,
+    ImagesApi,
     // Common
     setAppToken: function (appToken: string) {
         ZiggeoPlayer.setAppToken(appToken);
@@ -98,28 +104,35 @@ export default {
     setCamera: function (camera) {
         ZiggeoRecorder.setCamera(camera);
     },
+    /**
+     * @deprecated Use `startCameraRecorder()` instead.
+     */
     record: async function () {
         return ZiggeoRecorder.record();
+    },
+    startCameraRecorder: async function () {
+        return ZiggeoRecorder.record();
+    },
+    startImageRecorder: async function () {
+        return ZiggeoRecorder.startImageRecorder();
+    },
+    startAudioRecorder: async function () {
+        return ZiggeoRecorder.startAudioRecorder();
+    },
+    startAudioPlayer:async function (token: string) {
+        return ZiggeoRecorder.startAudioPlayer(token);
+    },
+    showImage:async function (token: string) {
+        return ZiggeoRecorder.showImage(token);
     },
     startScreenRecorder: async function () {
         return ZiggeoRecorder.startScreenRecorder();
     },
-    uploadFromFileSelector: async function (map) {
-        return ZiggeoRecorder.uploadFromFileSelector(map);
-    },
     uploadFromPath: async function (fileName, createObject: CreateObject) {
         return ZiggeoRecorder.uploadFromPath(fileName, createObject);
     },
-    /**
-     * @deprecated Use `uploadFromFileSelector(map)` instead.
-     */
-    uploadFromFileSelectorWithDurationLimit: async function (maxAllowedDurationInSeconds, enforceDuration) {
-        console.warn('Calling deprecated function!');
-        var argsMap = {'max_duration': maxAllowedDurationInSeconds, 'enforce_duration': enforceDuration};
+    uploadFromFileSelector: async function (argsMap) {
         return ZiggeoRecorder.uploadFromFileSelector(argsMap);
-    },
-    cancelRequest: function () {
-        ZiggeoRecorder.cancelRequest();
     },
     startQrScanner: function (data) {
         ZiggeoRecorder.startQrScanner(data);
@@ -134,9 +147,9 @@ export default {
         return new NativeEventEmitter(ZiggeoVideoView);
     },
 
-    // ZiggeoPlayer
-    play: function (videoId: string) {
-        ZiggeoPlayer.play(videoId);
+    // Video Player
+    playVideo: function (videoId: string) {
+        ZiggeoPlayer.playVideo(videoId);
     },
     playFromUri: function (path_or_url: string) {
         ZiggeoPlayer.playFromUri(path_or_url);
@@ -153,6 +166,12 @@ export default {
     setAdsURL: function (url) {
         ZiggeoPlayer.setAdsURL(url);
     },
+    cancelCurrentUpload: function (delete_file: boolean) {
+        ZiggeoRecorder.cancelCurrentUpload(delete_file);
+    },
+    cancelUploadByPath: function (path: string, delete_file: boolean) {
+        ZiggeoRecorder.cancelUploadByPath(path, delete_file);
+    },
 
     // Constants
     REAR_CAMERA: ZiggeoRecorder.rearCamera,
@@ -160,5 +179,9 @@ export default {
     HIGH_QUALITY: ZiggeoRecorder.highQuality,
     MEDIUM_QUALITY: ZiggeoRecorder.mediumQuality,
     LOW_QUALITY: ZiggeoRecorder.lowQuality,
+
+    MEDIA_TYPE_VIDEO: ZiggeoRecorder.video,
+    MEDIA_TYPE_AUDIO: ZiggeoRecorder.audio,
+    MEDIA_TYPE_IMAGE: ZiggeoRecorder.image,
 
 };
