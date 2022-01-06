@@ -10,7 +10,7 @@ Pod::Spec.new do |s|
   s.source           = { :git => 'https://github.com/Ziggeo/ReactNativeSDK.git' }
   s.source_files     = "ios/**/*.{m,mm,h}"
 
-  s.ios.deployment_target = '10.0'
+  s.ios.deployment_target = '11.0'
   s.dependency 'React-Core'
   s.dependency 'iOS-Client-SDK'
 end
